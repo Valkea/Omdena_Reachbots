@@ -6,8 +6,7 @@ import cv2
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-BASE_URL = "http://0.0.0.0:5000"
-
+DEFAULT_URL = "http://0.0.0.0:5000"
 
 colors = {
     "spatter": "FF0000",  # 921619 ~RED
@@ -102,7 +101,7 @@ def get_available_models():
     """
 
     # sending get request
-    URL = BASE_URL + "/get_available_models"
+    URL = st.session_state['API_URL'] + "/get_available_models"
     r = requests.get(url=URL)
 
     # extracting data in json format
@@ -139,7 +138,7 @@ def post_images(uploaded_files, selected_model):
     files = [("file", x) for x in uploaded_files]
 
     # sending get request
-    URL = BASE_URL + "/predict_defects"
+    URL = st.session_state['API_URL'] + "/predict_defects"
 
     r = requests.post(
         URL,
@@ -152,8 +151,40 @@ def post_images(uploaded_files, selected_model):
     return data
 
 
-def main():
-    available_models, current_index = get_available_models()
+def init():
+    """
+    Request the API base url
+    """
+
+    def go(base_url):
+        available_models, current_index = get_available_models()
+        main(base_url, available_models, current_index)
+
+    if 'API_URL' in st.session_state:
+        go(st.session_state['API_URL'])
+
+    else:
+        form_div = st.empty()
+        form = form_div.form("url_form")
+        base_url = form.text_input("**Base URL:**", DEFAULT_URL)
+        submitted = form.form_submit_button("Submit")
+
+        if submitted and base_url != "":
+            try:
+                st.session_state['API_URL'] = base_url
+                go(base_url)
+                form_div.empty()
+            except Exception:
+                st.write("Invalid URL:", base_url)
+                del st.session_state["API_URL"]
+
+
+def main(base_url, available_models, current_index):
+    """
+    Define the streamlit app layout and base actions
+    """
+
+    st.sidebar.write("API_URL:", st.session_state['API_URL'])
 
     # --- Side bar ---
 
@@ -249,4 +280,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    init()
