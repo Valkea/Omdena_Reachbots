@@ -44,6 +44,51 @@ def hex_to_rgb(hex):
     return tuple(int(hex[i : i + 2], 16) for i in (0, 2, 4))
 
 
+def draw_text(
+    img,
+    text,
+    font=cv2.FONT_HERSHEY_PLAIN,
+    pos=(0, 0),
+    font_scale=3,
+    font_thickness=2,
+    text_color=(0, 255, 0),
+    text_color_bg=(0, 0, 0),
+):
+    """
+    Draw text with a background color
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        A cv2 source image
+    text : str
+        The text to write on the image
+    pos : tuple(int, int)
+        The starting position of the background (bottom, left)
+    font_scale : int
+        The text size
+    font_thickness : int
+        The text thickness
+    text_color : tuple(int, int, int)
+        The RGB values for the font color
+    text_color_bg : tuple(int, int, int)
+        The RGB valies for the background color
+
+    Returns
+    -------
+    numpy.ndarray
+        The original image modified with the text and background
+    """
+
+    x, y = pos
+    text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
+    text_w, text_h = text_size
+    cv2.rectangle(img, pos, (x + text_w, y - text_h), text_color_bg, -1)
+    cv2.putText(img, text, (x, y), font, font_scale, text_color, font_thickness)
+
+    return img
+
+
 def get_available_models():
     """
     Fetch the models available on the API
@@ -120,19 +165,19 @@ def main():
         index=current_index,
     )
 
+    show_labels = form.checkbox("Show labels on pictures", True)
+    show_jsons = form.checkbox("Show defait details", False)
+    show_json = form.checkbox("Show the whole JSON", False)
+
     uploaded_files = form.file_uploader("Choose file(s)", accept_multiple_files=True)
     submitted = form.form_submit_button("Submit")
 
     if submitted:
-        st.write("You selected:", available_models[option])
-
         if len(uploaded_files) > 0:
             json = post_images(uploaded_files, available_models[option])
-            st.write("JSON", json)
             defects = json["defects"]
 
             for file in uploaded_files:
-
                 image = Image.open(file)
                 image = image.save("img.jpg")
 
@@ -144,18 +189,22 @@ def main():
                 window_name = "Image"
 
                 # Line thickness of 2 px
-                thickness = 2
+                thickness = 1
 
-                for defect in defects:
+                defects_str = []
+                for i, defect in enumerate(defects):
                     if file.name != defect["file"]:
                         continue
+
+                    # defects_str.append((defect["type"], defect["probability"]))
+                    defects_str.append({ k:v for k, v in defect.items() if k in ['type', 'probability']})
 
                     # Get defect coords
                     x, y, w, h = defect["coords"]
 
                     # Blue color in BGR
-                    t = defect["type"]
-                    color = hex_to_rgb(colors[t])
+                    dtype = defect["type"]
+                    color = hex_to_rgb(colors[dtype])
                     # color = (255, 0, 0)
 
                     # Start coordinate (the top left corner of rectangle)
@@ -163,14 +212,40 @@ def main():
 
                     # Ending coordinate (represents the bottom right corner of rectangle)
                     end_point = (int(w), int(h))
+
+                    # Draw rectangle around the defect
                     image = cv2.rectangle(
                         image, start_point, end_point, color, thickness
                     )
 
+                    # Add label next to the defect
+                    if show_labels:
+                        txt = f"{i} {dtype}"
+                    else:
+                        txt = f"{i}"
+
+                    image = draw_text(
+                        image,
+                        txt,
+                        font=cv2.FONT_HERSHEY_DUPLEX,
+                        pos=start_point,
+                        font_scale=0.6,
+                        font_thickness=thickness,
+                        text_color=color,
+                        text_color_bg=(255, 255, 255),
+                    )
+
                 st.image(image)
+                # st.json(defects_str, expanded=False)
+                if show_jsons:
+                    st.write(defects_str)
+
+            st.write("**Model used:**", json["defect_model"], "||", "**Total inference time:**", json["inference_time"], " || ", "**Mean inference time:**", json["mean_inference_time"])
+            if show_json:
+                st.write("JSON", json)
 
     # --- Center ---
-    st.text("Hello world")
+    # st.text("Hello world")
 
 
 if __name__ == "__main__":
