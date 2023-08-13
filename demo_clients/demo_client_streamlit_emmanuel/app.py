@@ -223,7 +223,8 @@ def main(base_url, available_models, current_index):
                 thickness = 1
 
                 defects_str = []
-                for i, defect in enumerate(defects):
+                count = 0
+                for defect in defects:
                     if file.name != defect["file"]:
                         continue
 
@@ -251,9 +252,9 @@ def main(base_url, available_models, current_index):
 
                     # Add label next to the defect
                     if show_labels:
-                        txt = f"{i} {dtype}"
+                        txt = f"{count} {dtype}"
                     else:
-                        txt = f"{i}"
+                        txt = f"{count}"
 
                     image = draw_text(
                         image,
@@ -265,6 +266,8 @@ def main(base_url, available_models, current_index):
                         text_color=color,
                         text_color_bg=(255, 255, 255),
                     )
+
+                    count +=1
 
                 st.image(image)
                 # st.json(defects_str, expanded=False)
