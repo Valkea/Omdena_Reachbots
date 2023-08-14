@@ -218,13 +218,16 @@ def submit_video(uploaded_video, selected_model, show_labels, show_jsons, show_j
 
     # vid_div = st.empty()
     cur_frame = 0
-    success = True
     frame_skip = 300  # display every 300 frames
 
-    while success:
-        success, frame = vidcap.read()  # get next frame
+    while True:
+        # success, frame = vidcap.read()  # get next frame
+        success = vidcap.grab()
+        if not success: break # Video ended
+
         if cur_frame % frame_skip == 0:  # draw every x frames
             # pil_img = Image.fromarray(frame) # convert cv2 frame to PIL Image
+            status, frame = vidcap.retrieve()  # Decode processing frame with .grab()
 
             is_success, buffer = cv2.imencode(".png", frame)
             io_buf = io.BytesIO(buffer)
