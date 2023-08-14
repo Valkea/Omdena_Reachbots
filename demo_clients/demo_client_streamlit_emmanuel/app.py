@@ -189,14 +189,14 @@ def submit_images(files, selected_model, show_labels, show_jsons, show_json):
 
 
 def submit_video(
-    uploaded_video, selected_model, show_labels, show_jsons, show_json, processing_fps, all_at_once
+    video_file, selected_model, show_labels, show_jsons, show_json, show_stream, cps
 ):
     """
     Prepare the uploaded video for the 'predict_draw_defects' function
 
     Parameters
     ----------
-    uploaded_video : UploadedFile
+    video_file : UploadedFile
         A video file to use for prediction and drawing.
     selected_model : str
         The model_id of the model to use for inference.
@@ -206,21 +206,27 @@ def submit_video(
         An option to display defect characteristics next to each image.
     show_json : boolean
         An option to display the JSON returned by the API at the end of the call.
-    processing_fps : int
+    show_stream: boolean
+        An option to display all the images in the same container (the new image replace the older)
+    cps : int
         An option to define the number of captures per second
     """
 
     # --- CAPTURE VIDEO STREAM ---
 
-    vid = uploaded_video.name
+    vid = video_file.name
     with open(vid, mode="wb") as f:
-        f.write(uploaded_video.read())  # save video to disk
+        f.write(video_file.read())  # save video to disk
 
     vidcap = cv2.VideoCapture(vid)  # load video from disk
 
     # --- LOOP OVER CAPTURED FRAMES ---
 
-    # vid_div = st.empty()
+    if show_stream:
+        st.write("Capture stream")
+        vid_div = st.empty()
+        st.divider()
+
     cur_frame = 0
     capt_count = 0
     captured_files = []
@@ -228,20 +234,17 @@ def submit_video(
     # -- Calculate and set the skip rate
     skip_rate = 1
     video_fps = vidcap.get(cv2.CAP_PROP_FPS)
-    if video_fps > processing_fps:
-        skip_rate = round(video_fps / processing_fps)
+    if video_fps > cps:
+        skip_rate = round(video_fps / cps)
 
     while True:
         # success, frame = vidcap.read()  # get next frame
         success = vidcap.grab()
-
-        # -- Exit when video ends
         if not success:
             break
 
         cur_frame += 1
-
-        if (cur_frame % skip_rate == 0):  # Processing frame
+        if cur_frame % skip_rate == 0:  # Processing frame
             capt_count += 1
             st.write(f"Capture {capt_count}")
 
@@ -254,22 +257,18 @@ def submit_video(
 
             captured_files.append(io_buf)
 
-            if all_at_once is False:
-                predict_draw_defects(
-                    captured_files, selected_model, show_labels, show_jsons, show_json
-                )
-                captured_files = []
-            else:
-                st.image(io_buf.getvalue())
-            # vid_div.image(pil_img)
-            # vid_div.image(io_buf.getvalue())
+            drawn_img = predict_draw_defects(
+                captured_files, selected_model, show_labels, show_jsons, show_json
+            )
+            captured_files = []
+
+            if show_stream:
+                vid_div.image(drawn_img)
+                # vid_div.image(io_buf.getvalue())
+
+    # --- RELEASE VIDEO ---
 
     vidcap.release()
-
-    # if all_at_once is True:
-    #     predict_draw_defects(
-    #         captured_files, selected_model, show_labels, show_jsons, show_json
-    #     )
 
 
 def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_json):
@@ -288,6 +287,11 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         An option to display defect characteristics next to each image.
     show_json : boolean
         An option to display the JSON returned by the API at the end of the call.
+
+    Returns
+    -------
+    str
+        The last drawn image.
     """
     json = post_images(files, selected_model)
     defects = json["defects"]
@@ -356,7 +360,6 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
             count += 1
 
         st.image(image)
-        # st.json(defects_str, expanded=False)
         defects_expander = st.expander("Defects", expanded=show_jsons)
         defects_expander.write(defects_str)
 
@@ -373,6 +376,8 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
 
     json_expander = st.expander("Returned JSON", expanded=show_json)
     json_expander.write(json)
+
+    return image
 
 
 # ===== LAYOUTS =====
@@ -436,8 +441,8 @@ def main(base_url, available_models, current_index):
     )
     submitted_i = tabs[0].form_submit_button("Submit image(s)")
 
-    # all_at_once = tabs[1].checkbox("All at once?", False)
-    fps = tabs[1].slider('Capture per second', 1, 5, 1)
+    show_stream = tabs[1].checkbox("Show stream", False)
+    fps = tabs[1].slider("Capture per second", 1, 5, 1)
     uploaded_video = tabs[1].file_uploader("Choose video", type=["mp4", "mov"])
     submitted_v = tabs[1].form_submit_button("Submit video")
 
@@ -460,8 +465,8 @@ def main(base_url, available_models, current_index):
                 show_labels,
                 show_jsons,
                 show_json,
-                fps, 
-                False, # all_at_once
+                show_stream,
+                fps,
             )
 
 
