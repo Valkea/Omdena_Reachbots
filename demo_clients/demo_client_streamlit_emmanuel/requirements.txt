@@ -1,4 +1,5 @@
 streamlit
 streamlit-option-menu
+extra_streamlit_components
 opencv-python
 Pillow
