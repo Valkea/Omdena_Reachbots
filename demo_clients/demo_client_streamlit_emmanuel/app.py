@@ -188,7 +188,9 @@ def submit_images(files, selected_model, show_labels, show_jsons, show_json):
         )
 
 
-def submit_video(uploaded_video, selected_model, show_labels, show_jsons, show_json):
+def submit_video(
+    uploaded_video, selected_model, show_labels, show_jsons, show_json, processing_fps, all_at_once
+):
     """
     Prepare the uploaded video for the 'predict_draw_defects' function
 
@@ -204,6 +206,8 @@ def submit_video(uploaded_video, selected_model, show_labels, show_jsons, show_j
         An option to display defect characteristics next to each image.
     show_json : boolean
         An option to display the JSON returned by the API at the end of the call.
+    processing_fps : int
+        An option to define the number of captures per second
     """
 
     # --- CAPTURE VIDEO STREAM ---
@@ -218,29 +222,54 @@ def submit_video(uploaded_video, selected_model, show_labels, show_jsons, show_j
 
     # vid_div = st.empty()
     cur_frame = 0
-    frame_skip = 300  # display every 300 frames
+    capt_count = 0
+    captured_files = []
+
+    # -- Calculate and set the skip rate
+    skip_rate = 1
+    video_fps = vidcap.get(cv2.CAP_PROP_FPS)
+    if video_fps > processing_fps:
+        skip_rate = round(video_fps / processing_fps)
 
     while True:
         # success, frame = vidcap.read()  # get next frame
         success = vidcap.grab()
-        if not success: break # Video ended
 
-        if cur_frame % frame_skip == 0:  # draw every x frames
+        # -- Exit when video ends
+        if not success:
+            break
+
+        cur_frame += 1
+
+        if (cur_frame % skip_rate == 0):  # Processing frame
+            capt_count += 1
+            st.write(f"Capture {capt_count}")
+
             # pil_img = Image.fromarray(frame) # convert cv2 frame to PIL Image
             status, frame = vidcap.retrieve()  # Decode processing frame with .grab()
 
             is_success, buffer = cv2.imencode(".png", frame)
             io_buf = io.BytesIO(buffer)
-            io_buf.name = "capture.png"
+            io_buf.name = f"capture{cur_frame}.png"
 
-            captured_files = [io_buf]
-            predict_draw_defects(
-                captured_files, selected_model, show_labels, show_jsons, show_json
-            )
+            captured_files.append(io_buf)
+
+            if all_at_once is False:
+                predict_draw_defects(
+                    captured_files, selected_model, show_labels, show_jsons, show_json
+                )
+                captured_files = []
+            else:
+                st.image(io_buf.getvalue())
             # vid_div.image(pil_img)
             # vid_div.image(io_buf.getvalue())
 
-        cur_frame += 1
+    vidcap.release()
+
+    # if all_at_once is True:
+    #     predict_draw_defects(
+    #         captured_files, selected_model, show_labels, show_jsons, show_json
+    #     )
 
 
 def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_json):
@@ -265,7 +294,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
 
     for file in files:
         image = Image.open(file)
-        image = image.convert("RGB") # remove alpha if any
+        image = image.convert("RGB")  # remove alpha if any
         image = image.save("img.jpg")
 
         # Reading an image in default mode
@@ -345,7 +374,9 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
     json_expander = st.expander("Returned JSON", expanded=show_json)
     json_expander.write(json)
 
+
 # ===== LAYOUTS =====
+
 
 def init():
     """
@@ -405,6 +436,8 @@ def main(base_url, available_models, current_index):
     )
     submitted_i = tabs[0].form_submit_button("Submit image(s)")
 
+    # all_at_once = tabs[1].checkbox("All at once?", False)
+    fps = tabs[1].slider('Capture per second', 1, 5, 1)
     uploaded_video = tabs[1].file_uploader("Choose video", type=["mp4", "mov"])
     submitted_v = tabs[1].form_submit_button("Submit video")
 
@@ -427,7 +460,10 @@ def main(base_url, available_models, current_index):
                 show_labels,
                 show_jsons,
                 show_json,
+                fps, 
+                False, # all_at_once
             )
+
 
 if __name__ == "__main__":
     init()
