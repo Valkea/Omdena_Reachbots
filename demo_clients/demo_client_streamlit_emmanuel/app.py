@@ -1,4 +1,7 @@
+import os
+import io
 import requests
+import numpy as np
 
 from PIL import Image
 import cv2
@@ -7,6 +10,8 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 
 DEFAULT_URL = "http://0.0.0.0:5000"
+
+os.environ['OPENCV_FFMPEG_READ_ATTEMPTS'] = "10000"
 
 colors = {
     "spatter": "FF0000",  # 921619 ~RED
@@ -136,6 +141,7 @@ def post_images(uploaded_files, selected_model):
 
     # prepare data with multiple files
     files = [("file", x) for x in uploaded_files]
+    print(files)
 
     # sending get request
     URL = st.session_state['API_URL'] + "/predict_defects"
@@ -200,87 +206,139 @@ def main(base_url, available_models, current_index):
     show_jsons = form.checkbox("Show defait details", False)
     show_json = form.checkbox("Show the whole JSON", False)
 
-    uploaded_files = form.file_uploader("Choose file(s)", accept_multiple_files=True)
+    uploaded_files = form.file_uploader("Choose image(s)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
     submitted = form.form_submit_button("Submit")
 
     if submitted:
         if len(uploaded_files) > 0:
-            json = post_images(uploaded_files, available_models[option])
-            defects = json["defects"]
+            for uploaded_file in uploaded_files:
+                print("TYPE:", uploaded_file.type)
+            predict_and_draw(uploaded_files, available_models[option], show_labels, show_jsons, show_json)
 
-            for file in uploaded_files:
-                image = Image.open(file)
-                image = image.save("img.jpg")
+    # --------------------
 
-                # Reading an image in default mode
-                image = cv2.imread("img.jpg")
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    form_v = st.sidebar.form("pred_formi_video")
+    uploaded_video = form_v.file_uploader("Choose video", type=["mp4", "mov"])
+    submitted_v = form_v.form_submit_button("Submit")
+    frame_skip = 300 # display every 300 frames
 
-                # Window name in which image is displayed
-                window_name = "Image"
+    if submitted_v and uploaded_video is not None: # run only when user uploads video
+        vid = uploaded_video.name
+        with open(vid, mode='wb') as f:
+            f.write(uploaded_video.read()) # save video to disk
+    
+        st.markdown(f"""
+        ### Files
+        - {vid}
+        """,
+        unsafe_allow_html=True) # display file name
+    
+        vidcap = cv2.VideoCapture(vid) # load video from disk
+        cur_frame = 0
+        success = True
 
-                # Line thickness of 2 px
-                thickness = 1
+        vid_div = st.empty()
+    
+        while success:
+            success, frame = vidcap.read() # get next frame from video
+            if cur_frame % frame_skip == 0: # only analyze every n=300 frames
+                print('frame: {}'.format(cur_frame))
+                # pil_img = Image.fromarray(frame) # convert opencv frame (with type()==numpy) into PIL Image
 
-                defects_str = []
-                count = 0
-                for defect in defects:
-                    if file.name != defect["file"]:
-                        continue
+                is_success, buffer = cv2.imencode(".jpg", frame)
+                io_buf = io.BytesIO(buffer)
+                io_buf.name = "Blop2.png"
 
-                    # defects_str.append((defect["type"], defect["probability"]))
-                    defects_str.append({ k:v for k, v in defect.items() if k in ['type', 'probability']})
+                #with open("Blop.png", "wb") as f:
+                #    f.write(io_buf.getvalue())
 
-                    # Get defect coords
-                    x, y, w, h = defect["coords"]
-
-                    # Blue color in BGR
-                    dtype = defect["type"]
-                    color = hex_to_rgb(colors[dtype])
-                    # color = (255, 0, 0)
-
-                    # Start coordinate (the top left corner of rectangle)
-                    start_point = (int(x), int(y))
-
-                    # Ending coordinate (represents the bottom right corner of rectangle)
-                    end_point = (int(w), int(h))
-
-                    # Draw rectangle around the defect
-                    image = cv2.rectangle(
-                        image, start_point, end_point, color, thickness
-                    )
-
-                    # Add label next to the defect
-                    if show_labels:
-                        txt = f"{count} {dtype}"
-                    else:
-                        txt = f"{count}"
-
-                    image = draw_text(
-                        image,
-                        txt,
-                        font=cv2.FONT_HERSHEY_DUPLEX,
-                        pos=start_point,
-                        font_scale=0.6,
-                        font_thickness=thickness,
-                        text_color=color,
-                        text_color_bg=(255, 255, 255),
-                    )
-
-                    count +=1
-
-                st.image(image)
-                # st.json(defects_str, expanded=False)
-                if show_jsons:
-                    st.write(defects_str)
-
-            st.write("**Model used:**", json["defect_model"], "||", "**Total inference time:**", json["inference_time"], " || ", "**Mean inference time:**", json["mean_inference_time"])
-            if show_json:
-                st.write("JSON", json)
+                ups = [io_buf]
+                predict_and_draw(ups, available_models[option], show_labels, show_jsons, show_json)
+                # vid_div.image(pil_img)
+                # vid_div.image(io_buf.getvalue())
+            cur_frame += 1
 
     # --- Center ---
     # st.text("Hello world")
 
+
+def predict_and_draw(uploaded_files, selected_model, show_labels, show_jsons, show_json):
+
+    json = post_images(uploaded_files, selected_model)
+    print(json)
+    defects = json["defects"]
+    
+    for file in uploaded_files:
+        print("D01", type(file))
+        image = Image.open(file)
+        image = image.save("img.jpg")
+        print("D02", type(file))
+    
+        # Reading an image in default mode
+        image = cv2.imread("img.jpg")
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+        # Window name in which image is displayed
+        window_name = "Image"
+    
+        # Line thickness of 2 px
+        thickness = 1
+    
+        defects_str = []
+        count = 0
+        for defect in defects:
+            if file.name != defect["file"]:
+                continue
+    
+            # defects_str.append((defect["type"], defect["probability"]))
+            defects_str.append({ k:v for k, v in defect.items() if k in ['type', 'probability']})
+    
+            # Get defect coords
+            x, y, w, h = defect["coords"]
+    
+            # Blue color in BGR
+            dtype = defect["type"]
+            color = hex_to_rgb(colors[dtype])
+            # color = (255, 0, 0)
+    
+            # Start coordinate (the top left corner of rectangle)
+            start_point = (int(x), int(y))
+    
+            # Ending coordinate (represents the bottom right corner of rectangle)
+            end_point = (int(w), int(h))
+    
+            # Draw rectangle around the defect
+            image = cv2.rectangle(
+                image, start_point, end_point, color, thickness
+            )
+    
+            # Add label next to the defect
+            if show_labels:
+                txt = f"{count} {dtype}"
+            else:
+                txt = f"{count}"
+    
+            image = draw_text(
+                image,
+                txt,
+                font=cv2.FONT_HERSHEY_DUPLEX,
+                pos=start_point,
+                font_scale=0.6,
+                font_thickness=thickness,
+                text_color=color,
+                text_color_bg=(255, 255, 255),
+            )
+    
+            count +=1
+    
+        st.image(image)
+        # st.json(defects_str, expanded=False)
+        if show_jsons:
+            st.write(defects_str)
+
+    st.write("**Model used:**", json["defect_model"], "||", "**Total inference time:**", json["inference_time"], " || ", "**Mean inference time:**", json["mean_inference_time"])
+    if show_json:
+        st.write("JSON", json)
 
 if __name__ == "__main__":
     init()
