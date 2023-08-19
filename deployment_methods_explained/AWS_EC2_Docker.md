@@ -55,7 +55,7 @@ Sources:
 
 
 ### Run the project
-> 1. (remote) `sudo docker run -it -p 5000:5000 valkea/reachbots:latest`
+> 1. (remote) `sudo docker run -it -p 5000:5000 --pull=always valkea/reachbots:latest`
 > 2. Access the model using the public url (EC2/Instances) + the app port (i.e. : http://PUBLICuRL:5000 )
 
 
@@ -65,7 +65,7 @@ Sources:
 
 So in order to perenize this, we can use the following command:
 
-> (remote) `screen -R deploy docker run -it -p 5000:5000 valkea/reachbots:latest`
+> (remote) `screen -R deploy docker run -it -p 5000:5000 --pull=always valkea/reachbots:latest`
 
 And hence the API server will keep running even if the terminal is closed.
 
