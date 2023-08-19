@@ -45,18 +45,18 @@ Sources:
 > sudo install -m 0755 -d /etc/apt/keyrings
 > curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 > sudo chmod a+r /etc/apt/keyrings/docker.gpg
-> echo "deb [arch="$(dpkg --print-architecture)" \
->       signed-by=/etc/apt/keyrings/docker.gpg] \
->       https://download.docker.com/linux/ubuntu \
->       "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
->       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`
+> echo \
+>  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+>  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+>  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+> sudo apt-get update
+> sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 > ```
 
 
-### Connect the EC2 instance and run the project
-> 1. ```ssh -i my_key_pair.pem ubuntu@PUBLICuRL```
-> 2. (remote) `sudo docker run -it -p 5000:5000 valkea/reachbots:latest`
-> 3. Access the model using the public url (EC2/Instances) + the app port (i.e. : http://PUBLICuRL:5000 )
+### Run the project
+> 1. (remote) `sudo docker run -it -p 5000:5000 valkea/reachbots:latest`
+> 2. Access the model using the public url (EC2/Instances) + the app port (i.e. : http://PUBLICuRL:5000 )
 
 
 ## 3. Make it persistant
