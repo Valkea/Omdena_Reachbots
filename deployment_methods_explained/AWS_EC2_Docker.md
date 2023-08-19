@@ -28,7 +28,8 @@ Sources:
 > 7. If needed, start the instance (but it should already be running)
 
 
-## 2. Connect to AWS EC2 instance using ssh
+## 2. Connect to AWS EC2 instance and run last Docker version using ssh
+
 > 1. Under `EC2 / Instances` select your EC2 instance and click `Connect`
 > 2. Select `SSH client` tab and follow the instructions
 > 3. `cd to the project folder with the .pem file`
@@ -38,21 +39,24 @@ Sources:
 ### Install docker (if you didn't selected an AMI with docker already installed)
 > 1. ```ssh -i my_key_pair.pem ubuntu@PUBLICuRL```
 > 2. (remote) Follow the instructions here: https://docs.docker.com/engine/install/ubuntu/
-> 	2.1 (remote) `sudo apt-get update`
->	2.2 (remote) `sudo apt-get install ca-certificates curl gnupg`
->	2.3 (remote) `sudo install -m 0755 -d /etc/apt/keyrings`
->	2.4 (remote) `curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg`
->	2.5 (remote) `sudo chmod a+r /etc/apt/keyrings/docker.gpg`
-> 	2.6 (remote) `echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`
+> ```
+> sudo apt-get update
+> sudo apt-get install ca-certificates curl gnupg
+> sudo install -m 0755 -d /etc/apt/keyrings
+> curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+> sudo chmod a+r /etc/apt/keyrings/docker.gpg
+> echo "deb [arch="$(dpkg --print-architecture)" \
+>       signed-by=/etc/apt/keyrings/docker.gpg] \
+>       https://download.docker.com/linux/ubuntu \
+>       "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+>       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`
+> ```
 
 
 ### Connect the EC2 instance and run the project
 > 1. ```ssh -i my_key_pair.pem ubuntu@PUBLICuRL```
 > 2. (remote) `sudo docker run -it -p 5000:5000 valkea/reachbots:latest`
-> 3. Access the model using the public url (EC2/Instances) + the app port <br>(i.e. : http://PUBLICuRL:5000 )
+> 3. Access the model using the public url (EC2/Instances) + the app port (i.e. : http://PUBLICuRL:5000 )
 
 
 ## 3. Make it persistant
