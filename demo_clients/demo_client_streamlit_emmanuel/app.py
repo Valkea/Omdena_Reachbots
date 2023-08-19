@@ -1,3 +1,10 @@
+"""
+Description: This script
+Author: Letremble Emmanuel
+Email: This script provides a streamlit interface connecting to the inference API (API_serving) to get defects from image(s) and video.
+Command: streamlit run app.py
+"""
+
 import os
 import io
 import requests
