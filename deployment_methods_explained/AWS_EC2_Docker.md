@@ -66,11 +66,11 @@ However, the next time you connect to the EC2 instance you won't see the API run
 To solve this problem, you simply need to get the current docker container NAME
 > (remote) `sudo docker ps` and grab de name in the last column
 
-Then you can check the logs and/or stop the instance
+Then you can check the logs
 > (remote) `sudo docker logs -f NAME`
 
 Or stop the instance
 > (remote) `sudo docker stop NAME`
 
 Or restart it with the lastest available Docker image
-> `sudo docker run -it -p 5000:5000 --pull=always valkea/reachbots:latest`
+> (remote) `sudo docker run -it -p 5000:5000 --pull=always valkea/reachbots:latest`
