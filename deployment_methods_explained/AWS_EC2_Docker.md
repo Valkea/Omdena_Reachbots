@@ -57,10 +57,14 @@ Sources:
 > 1. (remote) `sudo docker run -it -p 5000:5000 --pull=always valkea/reachbots:latest`
 > 2. Access the model using the public URL (EC2/Instances) + the app port (i.e. : http://PUBLICuRL:5000 )
 
+Then you can stop the instance
+> (remove) `CTRL+C` to stop the instance
+
+Or let it run and close the terminal...
 
 ## 3. Make it persistent
 
-**Docker instances are persistent by default**, so if you close the terminal the container will keep running (which is not the case if you run a Python script for instance).
+**Docker instances are persistent by default**, so if you close the terminal *(without `CTRL+C` before)* the container will keep running (which is not the case if you run a Python script for instance).
 However, the next time you connect to the EC2 instance you won't see the API running and won't be able to stop it...
 
 To solve this problem, you simply need to get the current docker container NAME
