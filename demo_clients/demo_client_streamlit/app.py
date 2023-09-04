@@ -150,8 +150,6 @@ def post_images(uploaded_files, selected_model):
 
     # prepare data with multiple files
     files = [("file", x) for x in uploaded_files]
-    print(files)
-
     # sending get request
     URL = st.session_state["API_URL"] + "/predict_defects"
 
@@ -300,7 +298,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         The last drawn image.
     """
     json = post_images(files, selected_model)
-    defects = json["defects"]
+    results = json["images"]
 
     for file in files:
         image = Image.open(file)
@@ -318,60 +316,79 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         thickness = 3
         font_scale = 1.5
 
-        defects_str = []
-        count = 0
-        for defect in defects:
-            if file.name != defect["file"]:
+        infos_str = {}
+
+        for result in results:
+
+            if file.name != result["file"]:
                 continue
 
-            # defects_str.append((defect["type"], defect["probability"]))
-            defects_str.append(
-                {k: v for k, v in defect.items() if k in ["type", "probability"]}
-            )
+            infos_str = {k: v for k, v in result.items() if k in ["file", "has_defect", "probability", "score", "defect_list"]}
+            # if result['has_defect'] is True:
+            #    infos_str['defect_list'] = []
 
-            # Get defect coords
-            x, y, w, h = defect["coords"]
+            if 'defect_list' not in result.keys():
+                continue
 
-            # Blue color in BGR
-            dtype = defect["type"]
-            color = hex_to_rgb(colors[dtype])
-            # color = (255, 0, 0)
 
-            # Start coordinate (the top left corner of rectangle)
-            start_point = (int(x), int(y))
+            defect_list = result['defect_list']
+            count = 0
 
-            # Ending coordinate (represents the bottom right corner of rectangle)
-            end_point = (int(w), int(h))
+            for defect in defect_list:
 
-            # Draw rectangle around the defect
-            image = cv2.rectangle(image, start_point, end_point, color, thickness)
+                if type(defect) == str:
+                    continue
 
-            # Add label next to the defect
-            if show_labels:
-                txt = f"{count} {dtype}"
-            else:
-                txt = f"{count}"
+                if 'coords' not in defect.keys():
+                    continue
 
-            image = draw_text(
-                image,
-                txt,
-                font=cv2.FONT_HERSHEY_DUPLEX,
-                pos=start_point,
-                font_scale=font_scale,
-                font_thickness=thickness,
-                text_color=color,
-                text_color_bg=(255, 255, 255),
-            )
+                # defects_str.append((defect["type"], defect["probability"]))
+                # infos_str['defect_list'].append(
+                #    {k: v for k, v in defect.items() if k in ["type", "probability"]} # coords
+                # )
 
-            count += 1
+                # Get defect coords
+                x, y, w, h = defect["coords"]
+
+                # Blue color in BGR
+                dtype = defect["type"]
+                color = hex_to_rgb(colors[dtype]) # color = (255, 0, 0)
+
+                # Start coordinate (the top left corner of rectangle)
+                start_point = (int(x), int(y))
+
+                # Ending coordinate (represents the bottom right corner of rectangle)
+                end_point = (int(w), int(h))
+
+                # Draw rectangle around the defect
+                image = cv2.rectangle(image, start_point, end_point, color, thickness)
+
+                # Add label next to the defect
+                if show_labels:
+                    txt = f"{count} {dtype}"
+                else:
+                    txt = f"{count}"
+
+                image = draw_text(
+                    image,
+                    txt,
+                    font=cv2.FONT_HERSHEY_DUPLEX,
+                    pos=start_point,
+                    font_scale=font_scale,
+                    font_thickness=thickness,
+                    text_color=color,
+                    text_color_bg=(255, 255, 255),
+                )
+
+                count += 1
 
         st.image(image)
         defects_expander = st.expander("Defects", expanded=show_jsons)
-        defects_expander.write(defects_str)
+        defects_expander.write(infos_str)
 
     st.write(
-        "**Model used:**",
-        json["defect_model"],
+        "**Used model(s):**",
+        json["defect_models"],
         "||",
         "**Total inference time:**",
         json["inference_time"],
