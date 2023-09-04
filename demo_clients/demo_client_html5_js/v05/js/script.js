@@ -277,16 +277,31 @@ function showResult( files, jsons ){
 
 	for(const file of files){
 		let i = 0
-		for(const defect of jsons['defects_json']['defects']){
-			if(defect.file == file.name)
+		for(const result of jsons['defects_json']['images']){
+			if(result.file == file.name)
 			{
- 				var div_source = document.getElementById("block_"+file.name);
+				var div_source = document.getElementById("block_"+file.name);
 				var result_cell = div_source.getElementsByClassName('result_show')
+				addBulletMeta(result_cell[0], result)
 
-				addBulletDefects(result_cell[0], defect, i, defect.probable_duplicate)
-				drawContextDefect(file.name, defect, i);
+				if (!('defect_list' in result)){
+					continue
+				}
 
-				i++;
+				const defect_list = result.defect_list
+
+				if (typeof defect_list === "string"){
+					result_cell[0].innerHTML += defect_list
+					continue
+				}
+
+				for(const defect of defect_list){
+					addBulletDefects(result_cell[0], defect, i)
+					if ('coords' in defect){
+						drawContextDefect(file.name, defect, i);
+					}
+					i++;
+				}
 			}
 		}
 	}
@@ -302,14 +317,24 @@ function showResult( files, jsons ){
 	time_cell.innerHTML += jsons['defects_json']['mean_inference_time']
 }
 
-function addBulletDefects(result_cell, defect, index, is_duplicate){
+function addBulletMeta(result_cell, defect ){
 
-	var duplicate_text = (is_duplicate) ? " (probable duplicate)" : "";
-	var duplicate_class = (is_duplicate) ? " class='duplicate'" : "";
-
-	result = "<h3 "+duplicate_class+">Defect "+index+duplicate_text+"</h3><ul "+duplicate_class+">"
+	result = "<h3>Meta infos</h3><ul>"
 	for (const [key, value] of Object.entries(defect)) {
-		if( ['probability', 'type', 'file'].includes(key) ){
+		if( ['probability', 'type', 'file', 'score', 'has_defect'].includes(key) ){
+			result += "<li><strong>"+key+":</strong> "+value+"</li>";
+		}
+	}
+
+	result += "</ul>"
+	result_cell.innerHTML += result
+}
+
+function addBulletDefects(result_cell, defect, index){
+
+	result = "<h3>Defect "+index+"</h3><ul>"
+	for (const [key, value] of Object.entries(defect)) {
+		if( ['probability', 'type'].includes(key) ){
 			result += "<li><strong>"+key+":</strong> "+value+"</li>";
 		}
 	}
