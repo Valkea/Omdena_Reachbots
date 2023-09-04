@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Reachbots simple client</title>
+		<link rel="stylesheet" href="css/style.css">
+		<script src="js/script.js"></script>
+		<style>
+			.flex-container {
+			  display: flex;
+			  background-color: DodgerBlue;
+			}
+			
+			.flex-container > div {
+			  background-color: #f1f1f1;
+			  margin: 10px;
+			  padding: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		 <p><input id="fileupload" type="file" accept="image/*" name="fileupload" onchange="onLoadImage(event)"/></p>
+		 <p><img id="output"/></p>
+
+		 <fieldset>
+		 	<h1>Defects Detection</h1>
+		 	<button id="pred_defects_btn" onclick="predict_defects()"> Predict Defects </button>
+			<br><br>
+			<div class="flex-container">
+				<div><canvas id="canvas_defects"></canvas></div>
+				<div id='result_defect'></div>
+			</div>
+			<div id='show_defects_json'></div>
+		 </fieldset>
+	</body>
+</html>

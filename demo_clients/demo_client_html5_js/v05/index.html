@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Reachbots demo client (batch predict)</title>
+		<link rel="stylesheet" href="css/style.css">
+		<script src="js/script.js"></script>
+	</head>
+	<body>
+		<h1>Reachbots demo</h1>
+
+		<p>
+		   <label for='filesupload'>select the file(s)</label>
+		   <input id="filesupload" type="file" accept="image/*" name="filesupload" multiple/>
+		</p>
+		<p>
+		   <label for='model_select'>select the model</label>
+		   <select id="model_select">
+			   <option value=''>NO MODEL</option>
+		   </select>
+		</p>
+		<p>
+		   <input id="show_labels" type='checkbox' checked>
+		   <label for='show_labels'>show labels on pictures</label>
+
+		   <input id="show_results" type='checkbox' checked>
+		   <label for='show_results'>show defect details</label>
+		</p>
+		<p>
+		   <!--input type='text' placeholder='an extra info we might need' id='ZZ'-->
+		   <!--input type='submit' id='predict'-->
+		</p>
+		<div id='originals'></div>
+
+		<fieldset>
+			 <div id="all_results"></div>
+		</fieldset>
+
+		<div id="time"></div>
+		<div id="json_result"></div>
+
+		<div id="blueprint">
+			<div class="flex-container">
+				<div class='canvas'><canvas></canvas></div>
+				<div class='loader'></div>
+				<div class='result_show'></div>
+				<div class='result_hide'></div>
+			</div>
+			<div id='show_defects_json'></div>
+		</div>
+	</body>
+</html>
