@@ -317,6 +317,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         font_scale = 1.5
 
         infos_str = {}
+        defect_infos_str = []
 
         for result in results:
 
@@ -324,28 +325,24 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
                 continue
 
             infos_str = {k: v for k, v in result.items() if k in ["file", "has_defect", "probability", "score", "defect_list"]}
-            # if result['has_defect'] is True:
-            #    infos_str['defect_list'] = []
+
 
             if 'defect_list' not in result.keys():
                 continue
 
-
             defect_list = result['defect_list']
-            count = 0
 
+            if type(defect_list) == str:
+                defect_infos_str = defect_list
+                continue
+
+            count = 0
             for defect in defect_list:
 
-                if type(defect) == str:
-                    continue
+                defect_infos_str.append({k: v for k, v in defect.items() if k in ["type", "probability"]}) # coords
 
                 if 'coords' not in defect.keys():
                     continue
-
-                # defects_str.append((defect["type"], defect["probability"]))
-                # infos_str['defect_list'].append(
-                #    {k: v for k, v in defect.items() if k in ["type", "probability"]} # coords
-                # )
 
                 # Get defect coords
                 x, y, w, h = defect["coords"]
@@ -382,6 +379,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
 
                 count += 1
 
+        infos_str['defect_list'] = defect_infos_str
         st.image(image)
         defects_expander = st.expander("Defects", expanded=show_jsons)
         defects_expander.write(infos_str)
