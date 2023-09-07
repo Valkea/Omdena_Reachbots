@@ -30,7 +30,6 @@ window.onload = function() {
 			for (var i = 0; i < fileInput.files.length; i++) {
 				fileList.push(fileInput.files[i]);
 			}
-			console.log(fileList);
 			display_originals(fileList);
 			initializeCells(fileList);
 			predict_all(fileList)
@@ -150,8 +149,6 @@ function display_originals( files ){
 		div_original.appendChild(img_original);
 
 		i++;
-		
-		console.log(file)
 	}
 }
 
@@ -275,15 +272,37 @@ function showResult( files, jsons ){
 		drawContextBackground(canvas[0], file.name, newW, newW);
 	}
 
+	var status_icon = {
+		true:'🔴', false:'🟢', 'object':'🔴', 'string':'🟢', 'undefined':'⚪'
+	}
+
 	for(const file of files){
 		let i = 0
+
 		for(const result of jsons['defects_json']['images']){
 			if(result.file == file.name)
 			{
 				var div_source = document.getElementById("block_"+file.name);
-				var result_cell = div_source.getElementsByClassName('result_show')
-				addBulletMeta(result_cell[0], result)
+				var result_show_cell = div_source.getElementsByClassName('result_show')
+				var result_hide_cell = div_source.getElementsByClassName('result_hide')
+				addBulletMeta(result_show_cell[0], result)
 
+
+				// Add classifiers status
+				var has_defect_binary = result['has_defect']
+				var has_defect_multil = ('defect_list' in result) && (typeof result['defect_list'] === 'object')
+
+				var status_str = "BINARY Classifier: "+status_icon[has_defect_binary]+" | "
+				status_str += "MULTILABEL Classifier: "+status_icon[typeof result['defect_list']]+ "<br><br>"
+
+				result_show_cell[0].innerHTML = status_str + result_show_cell[0].innerHTML
+				result_hide_cell[0].innerHTML = status_str + result_hide_cell[0].innerHTML
+
+				var canvas = div_source.getElementsByTagName("canvas")
+				newW = Math.min(winW/2,600)
+				drawContextStatus(canvas[0], file.name, has_defect_binary, has_defect_multil, newW, newW);
+
+				// Skip the drawing part if there is no defect
 				if (!('defect_list' in result)){
 					continue
 				}
@@ -291,12 +310,12 @@ function showResult( files, jsons ){
 				const defect_list = result.defect_list
 
 				if (typeof defect_list === "string"){
-					result_cell[0].innerHTML += defect_list
+					result_show_cell[0].innerHTML += defect_list
 					continue
 				}
 
 				for(const defect of defect_list){
-					addBulletDefects(result_cell[0], defect, i)
+					addBulletDefects(result_show_cell[0], defect, i)
 					if ('coords' in defect){
 						drawContextDefect(file.name, defect, i);
 					}
@@ -386,6 +405,27 @@ function drawContextBackground(canvas, name, newWidth, newHeight)
 	ctx.j = 0;
 
         ctx.drawImage(image, 0, 0, newWidth, newHeight);
+}
+
+function drawContextStatus(canvas, name, bin_status, multi_status, newWidth, newHeight)
+{
+	if (bin_status == true && multi_status == true){
+		status_color = "#FF0000"
+	} else if (bin_status == true && multi_status == false){
+		status_color = "#FFAA00"
+	} else {
+		status_color = "#00FF00"
+	}
+
+ 	let image = document.getElementById('original_'+name);
+	let ctx = contexts[name];
+
+ 	ctx.beginPath();
+ 	ctx.rect(0, 0, newWidth, newHeight)
+ 	ctx.strokeStyle = status_color;
+	ctx.lineWidth = 5;
+ 	ctx.stroke();
+	ctx.lineWidth = 1;
 }
 
 function drawContextDefect(name, defect, i){
