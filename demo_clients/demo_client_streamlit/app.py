@@ -308,6 +308,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         # Reading an image in default mode
         image = cv2.imread("img.jpg")
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        h, w, _ = image.shape
 
         # Window name in which image is displayed
         window_name = "Image"
@@ -319,17 +320,43 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         infos_str = {}
         defect_infos_str = []
 
+        has_defect_binary = False
+        has_defect_multilabel = False
+
         for result in results:
 
             if file.name != result["file"]:
                 continue
 
+            # -- Select the fields we want to display
             infos_str = {k: v for k, v in result.items() if k in ["file", "has_defect", "probability", "score", "defect_list"]}
 
 
+            # -- Draw a colored rectangle around the photo to indicate the result
+            color_red, color_orange, color_green = (255, 0, 0, 125), (255, 125, 0), (0, 255, 0)
+
+            # --- Check Binary result
+            has_defect_binary = result['has_defect']
+            result_color = color_orange if has_defect_binary == True else color_green
+
+            # --- Check Multilabel result
+            multi_defect_type = None
+            has_defect_multilabel = False
+            if 'defect_list' in result.keys():
+                multi_defect_type = type(result['defect_list'])
+                has_defect_multilabel = multi_defect_type != str
+
+            result_color = color_red if has_defect_multilabel == True else result_color
+
+            # --- Draw
+            image = cv2.rectangle(image, (0,0), (w, h), result_color, 15)
+
+
+            # -- Skip the drawinf part if there is no defect to draw
             if 'defect_list' not in result.keys():
                 continue
 
+            # -- Else draw the defects
             defect_list = result['defect_list']
 
             if type(defect_list) == str:
@@ -347,9 +374,9 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
                 # Get defect coords
                 x, y, w, h = defect["coords"]
 
-                # Blue color in BGR
+                # et color
                 dtype = defect["type"]
-                color = hex_to_rgb(colors[dtype]) # color = (255, 0, 0)
+                color = hex_to_rgb(colors[dtype])
 
                 # Start coordinate (the top left corner of rectangle)
                 start_point = (int(x), int(y))
@@ -379,8 +406,12 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
 
                 count += 1
 
-        infos_str['defect_list'] = defect_infos_str
         st.image(image)
+
+        icons = {True:'🔴', False:'🟢', list:'🔴', str:'🟢', None: '⚪'}
+        st.text(f"BINARY Classifier: {icons[has_defect_binary]} | MULTILABEL Classifier: {icons[multi_defect_type]}")
+        if defect_infos_str != []:
+                infos_str['defect_list'] = defect_infos_str
         defects_expander = st.expander("Defects", expanded=show_jsons)
         defects_expander.write(infos_str)
 
