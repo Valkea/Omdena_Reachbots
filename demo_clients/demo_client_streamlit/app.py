@@ -102,20 +102,23 @@ def draw_text(
     return img
 
 
-def get_available_models():
+def get_available_models(laser=False):
     """
     Fetch the models available on the API
 
     Returns
     -------
-    tuple of (dict, int)
+    tuple of (dict, int, str)
         A tuple containing:
         - a dictionnary with the labels as key and the keys as values.
         - an integer corresponding to the index of the currently selected model (on API side).
+        - a string corresponding to the id of the currently selected model (on API side).
     """
 
     # sending get request
-    URL = st.session_state["API_URL"] + "/get_available_models"
+    URL = st.session_state["API_URL"] + "/get_available_photo_models"
+    if laser == True:
+        URL = st.session_state["API_URL"] + "/get_available_laser_models"
     r = requests.get(url=URL)
 
     # extracting data in json format
@@ -128,10 +131,10 @@ def get_available_models():
     # inverse mapping
     models = {f"{v} [{k}]": k for k, v in models.items()}
 
-    return models, current_index
+    return models, current_index, data["current_model"]
 
 
-def post_images(uploaded_files, selected_model):
+def post_images(uploaded_files, selected_model, is_laser_image):
     """
     Send the selected files to the API /predict_defects endpoint
 
@@ -141,6 +144,8 @@ def post_images(uploaded_files, selected_model):
         A list with the uploaded image files as UploadedFile objects.
     selected_model : str
         The model_id of the model to use for inference.
+    is_laser_image : boolean
+        Define if the provided image is a laser cut image.
 
     Returns
     -------
@@ -156,7 +161,7 @@ def post_images(uploaded_files, selected_model):
     r = requests.post(
         URL,
         files=files,
-        data={"selected_model": selected_model},
+        data={"selected_model": selected_model, "laser_cut_image": is_laser_image},
     )
 
     # extracting data in json format
@@ -164,7 +169,7 @@ def post_images(uploaded_files, selected_model):
     return data
 
 
-def submit_images(files, selected_model, show_labels, show_jsons, show_json):
+def submit_images(files, selected_model, is_laser_image, show_labels, show_jsons, show_json):
     """
     Prepare the UploadedFiles for the 'predict_draw_defects' function
 
@@ -174,6 +179,8 @@ def submit_images(files, selected_model, show_labels, show_jsons, show_json):
         A list of files to use for prediction and drawing.
     selected_model : str
         The model_id of the model to use for inference.
+    is_laser_image : boolean
+        Define if the provided image is a laser cut image.
     show_labels : boolean
         An option to display defect labels on the images.
     show_jsons : boolean
@@ -186,6 +193,7 @@ def submit_images(files, selected_model, show_labels, show_jsons, show_json):
         predict_draw_defects(
             files,
             selected_model,
+            is_laser_image,
             show_labels,
             show_jsons,
             show_json,
@@ -193,7 +201,7 @@ def submit_images(files, selected_model, show_labels, show_jsons, show_json):
 
 
 def submit_video(
-    video_file, selected_model, show_labels, show_jsons, show_json, show_stream, cps
+    video_file, selected_model, is_laser_image, show_labels, show_jsons, show_json, show_stream, cps
 ):
     """
     Prepare the uploaded video for the 'predict_draw_defects' function
@@ -204,6 +212,8 @@ def submit_video(
         A video file to use for prediction and drawing.
     selected_model : str
         The model_id of the model to use for inference.
+    is_laser_image : boolean
+        Define if the provided image is a laser cut image.
     show_labels : boolean
         An option to display defect labels on the images.
     show_jsons : boolean
@@ -262,7 +272,12 @@ def submit_video(
             captured_files.append(io_buf)
 
             drawn_img = predict_draw_defects(
-                captured_files, selected_model, show_labels, show_jsons, show_json
+                captured_files,
+                selected_model,
+                is_laser_image,
+                show_labels,
+                show_jsons,
+                show_json
             )
             captured_files = []
 
@@ -275,7 +290,7 @@ def submit_video(
     vidcap.release()
 
 
-def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_json):
+def predict_draw_defects(files, selected_model, is_laser_image, show_labels, show_jsons, show_json):
     """
     Predict defects using the provided images and parameters
 
@@ -285,6 +300,8 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
         A list of files to use for prediction and drawing.
     selected_model : str
         The model_id of the model to use for inference.
+    is_laser_image : boolean
+        Define if the provided image is a laser cut image.
     show_labels : boolean
         An option to display defect labels on the images.
     show_jsons : boolean
@@ -297,7 +314,7 @@ def predict_draw_defects(files, selected_model, show_labels, show_jsons, show_js
     str
         The last drawn image.
     """
-    json = post_images(files, selected_model)
+    json = post_images(files, selected_model, is_laser_image)
     results = json["images"]
 
     for file in files:
@@ -441,8 +458,9 @@ def init():
     """
 
     def go(base_url):
-        available_models, current_index = get_available_models()
-        main(base_url, available_models, current_index)
+        photo_models = get_available_models(False)
+        laser_models = get_available_models(True)
+        main(base_url, photo_models, laser_models)
 
     if "API_URL" in st.session_state:
         go(st.session_state["API_URL"])
@@ -463,57 +481,100 @@ def init():
                 del st.session_state["API_URL"]
 
 
-def main(base_url, available_models, current_index):
+def main(base_url, available_photo_models, available_laser_models):
     """
     Display a layout to actually select medias, send them to the API and display the results
     """
 
     st.sidebar.write("API_URL:", st.session_state["API_URL"])
 
+    # --- SELECT MODEL TYPE
+
+    radio_labels = ['Photo models', 'Laser models']
+
+    if "model_type" not in st.session_state:
+        st.session_state.model_type = radio_labels[0]
+        st.session_state.model_list = available_photo_models[0]
+        st.session_state.model_index = available_photo_models[1]
+        st.session_state.model_id = available_photo_models[2]
+        st.session_state.is_laser = False
+
+    def onChangeRadio():
+
+        models, model_index, model_id = available_laser_models
+        if st.session_state.model_type == radio_labels[0]:
+            models, model_index, model_id = available_photo_models
+
+        st.session_state.is_laser = st.session_state.model_type == radio_labels[1]
+        st.session_state.model_list = models
+        st.session_state.model_index = model_index
+        st.session_state.model_id = model_id
+
+
+    st.sidebar.radio(
+        "Model type",
+        radio_labels,
+        key="model_type",
+        horizontal=True,
+        label_visibility='collapsed',
+        on_change=onChangeRadio,
+    )
+
+    # --- SELECT MODEL
+
+    def onChangeSelect():
+        st.session_state.model_id = st.session_state.model_list[st.session_state.model_selected_label]
+
+    model_id = st.sidebar.selectbox(
+        label="Select a model",
+        options=st.session_state.model_list,
+        key="model_selected_label",
+        index=st.session_state.model_index,
+        on_change=onChangeSelect,
+    )
+
+    # --- INIT FORM
+
     form = st.sidebar.form("pred_form")
 
-    # --- FORM OPTIONS ---
-
-    model_id = form.selectbox(
-        label="Select a model",
-        options=available_models,
-        index=current_index,
-    )
+    # --- SELECT GLOBAL FORM OPTIONS ---
 
     show_labels = form.checkbox("Show labels on pictures", False)
     show_jsons = form.checkbox("Show defait details", False)
     show_json = form.checkbox("Show the whole JSON", False)
 
-    # --- FORM TABS ---
+    # --- SELECT SOURCE AND SOURCE OPTIONS ---
 
     tabs = form.tabs(["Use Image(s)", "Use Video"])
 
     uploaded_files = tabs[0].file_uploader(
         "Choose image(s)", type=["jpg", "jpeg", "png"], accept_multiple_files=True
     )
-    submitted_i = tabs[0].form_submit_button("Submit image(s)")
 
     show_stream = tabs[1].checkbox("Show stream", False)
     fps = tabs[1].slider("Capture per second", 1, 5, 1)
     uploaded_video = tabs[1].file_uploader("Choose video", type=["mp4", "mov"])
-    submitted_v = tabs[1].form_submit_button("Submit video")
 
     # --- FORM SUBMITS ---
 
+    submitted_i = tabs[0].form_submit_button("Submit image(s)")
     if submitted_i:
         submit_images(
             uploaded_files,
-            available_models[model_id],
+            st.session_state.model_id,
+            st.session_state.is_laser,
             show_labels,
             show_jsons,
             show_json,
         )
 
+    submitted_v = tabs[1].form_submit_button("Submit video")
     if submitted_v:
         if uploaded_video is not None:
             submit_video(
                 uploaded_video,
-                available_models[model_id],
+                st.session_state.model_id,
+                st.session_state.is_laser,
                 show_labels,
                 show_jsons,
                 show_json,
