@@ -223,6 +223,7 @@ function postPictures(files, action, callback) {
 	model_select_value = document.getElementById('model_select').value;
 	if (model_select_value != ''){
 		formData.append('selected_model', model_select_value);
+		formData.append('laser_cut_image', 'False');
 	}
 
 	var myInit = {
