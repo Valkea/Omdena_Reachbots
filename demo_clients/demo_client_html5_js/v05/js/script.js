@@ -110,7 +110,7 @@ function getModelsCallback(json) {
 
 function getModels(callback) {
 
-	action ="get_available_models"
+	action = "get_available_photo_models"
 
 	var myInit = {
 		method: 'GET',
