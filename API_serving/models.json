@@ -1,0 +1,22 @@
+{
+    "ReachBotsTP_v1_sahi_yolo_final_wt.pt": {
+        "label": "YOLOv8 + SAHI",
+        "class": "MultiLabel_YOLOv8_SAHI",
+	"category": "photo"
+    },
+    "ReachBotsTP_v1_Full_Size_final_wt.pt": {
+        "label": "YOLOv8 Standalone",
+        "class": "MultiLabel_YOLOv8_Standalone",
+	"category": "photo"
+    },
+    "multilabel_mobilenet.onnx": {
+        "label": "Mobilnet",
+        "class": "MultiLabel_MobileNet",
+	"category": "photo"
+    },
+    "laser_multiclass_mobilenet.onnx": {
+        "label": "LASER Mobilnet",
+	"class": "Laser_Multiclass_MobileNet",
+	"category": "laser"
+    }
+}
